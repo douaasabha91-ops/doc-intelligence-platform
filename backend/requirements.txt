@@ -1,0 +1,34 @@
+# === Core Framework ===
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+
+# === PDF Processing ===
+PyMuPDF==1.24.10          # fitz - PDF to image conversion
+Pillow==10.4.0            # Image manipulation
+
+# === Image Preprocessing ===
+opencv-python-headless==4.10.0.84   # Image enhancement (no GUI needed)
+numpy==1.26.4
+
+# === OCR ===
+pytesseract==0.3.10       # Tesseract OCR wrapper
+
+# === NER (Optional) ===
+spacy==3.7.6              # NLP pipeline for NER
+# Download model after install: python -m spacy download en_core_web_sm
+
+# === Embeddings & Vector DB ===
+sentence-transformers==3.1.0   # Text embeddings
+chromadb==0.5.5               # Vector database
+rank-bm25==0.2.2              # Keyword search (BM25)
+
+# === RAG Chatbot (Ollama — Free & Local) ===
+requests>=2.31.0          # HTTP client for Ollama API
+httpx==0.27.2             # Async HTTP client
+
+# === Utilities ===
+pydantic==2.9.1
+pydantic-settings==2.5.2
+python-dotenv==1.0.1
+aiofiles==24.1.0
