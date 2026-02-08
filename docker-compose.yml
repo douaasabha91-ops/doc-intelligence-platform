@@ -3,7 +3,7 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
@@ -14,12 +14,3 @@ services:
     environment:
       - UPLOAD_DIR=/app/data/uploads
       - CHROMA_PERSIST_DIR=/app/data/chroma_db
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "5173:5173"
-    depends_on:
-      - backend
