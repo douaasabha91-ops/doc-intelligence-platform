@@ -79,7 +79,7 @@ A system capable of ingesting **scanned document images and PDFs**, extracting s
 | Embeddings          | sentence-transformers (`all-MiniLM-L6-v2`) | 384-dim text vectors                       | Apache 2.0 | Free |
 | Vector Database     | ChromaDB                                   | Persistent vector storage + cosine search  | Apache 2.0 | Free |
 | Keyword Search      | rank_bm25                                  | BM25Okapi scoring for keyword search       | Apache 2.0 | Free |
-| Chatbot LLM         | Ollama + Mistral 7B                        | Local LLM for RAG Q&A                     | MIT / Apache | Free |
+| Chatbot LLM         | Ollama + TinyLlama 1.1B (CPU)              | Local LLM for RAG Q&A                     | MIT / Apache | Free |
 | Containerization    | Docker + Docker Compose                    | Reproducible deployment                    | Apache 2.0 | Free |
 
 ### Why These Choices?
@@ -120,7 +120,29 @@ Our demo data consists of **scanned invoice images (`.jpg`)** from a shared Goog
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Docker (Recommended)
+
+```bash
+# 1. Install Ollama on your host machine
+#    Linux:   curl -fsSL https://ollama.com/install.sh | sh
+#    macOS:   brew install ollama
+#    Windows: download from https://ollama.com/download
+
+# 2. Pull the model and start Ollama
+ollama pull tinyllama
+ollama serve
+
+# 3. Start the platform
+docker-compose up --build
+```
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8000`
+- API docs: `http://localhost:8000/docs`
+
+### Manual Setup (without Docker)
+
+#### Prerequisites
 
 ```bash
 # Python 3.11+
@@ -136,10 +158,10 @@ choco install tesseract                    # Windows
 
 # Ollama (for RAG chatbot)
 curl -fsSL https://ollama.com/install.sh | sh
-ollama pull mistral                          # ~4.1GB download
+ollama pull tinyllama
 ```
 
-### Backend
+#### Backend
 
 ```bash
 cd backend
@@ -153,7 +175,7 @@ uvicorn app.main:app --reload --port 8000
 
 API docs available at: `http://localhost:8000/docs`
 
-### Frontend
+#### Frontend
 
 ```bash
 cd frontend
@@ -163,7 +185,7 @@ npm run dev
 
 UI available at: `http://localhost:5173`
 
-### Ollama (separate terminal)
+#### Ollama (separate terminal)
 
 ```bash
 ollama serve      # Starts at http://localhost:11434
@@ -180,6 +202,8 @@ doc-intelligence-platform/
 ├── docker-compose.yml
 │
 ├── backend/
+│   ├── Dockerfile
+│   ├── .dockerignore
 │   ├── .env.example
 │   ├── requirements.txt
 │   ├── app/
@@ -205,6 +229,8 @@ doc-intelligence-platform/
 │       └── chroma_db/                 # ChromaDB persistent storage
 │
 ├── frontend/
+│   ├── Dockerfile
+│   ├── .dockerignore
 │   ├── package.json
 │   ├── vite.config.js
 │   ├── tailwind.config.js
@@ -233,182 +259,6 @@ doc-intelligence-platform/
 | BMP | `.bmp` | Full OCR pipeline (always) |
 | WebP | `.webp` | Full OCR pipeline (always) |
 
----
-
-## 🗺️ ROADMAP — 6-Day Implementation Plan
-
----
-
-### 📅 Day 1 — Project Setup + Document Ingestion
-
-**Goal:** Backend running, React shell ready, files uploading and basic text extracting.
-
-| Time | Task | Details |
-|------|------|---------|
-| 1.0h | Environment setup | Create venv, `pip install -r requirements.txt`, verify Tesseract installed (`tesseract --version`), `npm install` frontend |
-| 0.5h | Prepare test data | Copy 10-15 invoice `.jpg` files from Google Drive into `data/uploads/` for testing |
-| 1.0h | FastAPI scaffold | Run `main.py`, verify `/docs` Swagger UI, test CORS with React dev server |
-| 1.5h | File upload endpoint | `POST /api/documents/upload` — accept PDF and images, save file, validate extension, return metadata |
-| 1.0h | Basic OCR | Load image with Pillow → `pytesseract.image_to_string()` → return extracted text |
-| 0.5h | React upload page | Wire `UploadPage.jsx` to upload endpoint with react-dropzone, show filename + text preview |
-| 0.5h | Test end-to-end | Upload 2-3 invoice JPGs, verify text shows up in browser |
-
-**✅ Day 1 Deliverable:** Upload an invoice image → see OCR-extracted text in the browser.
-
----
-
-### 📅 Day 2 — Image Enhancement + Layout Extraction
-
-**Goal:** Full OpenCV preprocessing pipeline improving OCR quality, layout blocks preserved.
-
-| Time | Task | Details |
-|------|------|---------|
-| 1.5h | OpenCV preprocessing | `preprocessing.py` — implement grayscale → non-local means denoise → CLAHE contrast → deskew → adaptive binarize |
-| 0.5h | Preprocessing visualization | Capture base64 thumbnail of each step, return in API response for UI display |
-| 1.0h | Tesseract with preprocessing | Wire preprocessed image into `image_to_string()`, compare OCR quality before/after |
-| 0.5h | Layout extraction | Use `image_to_data()` to get word bounding boxes, group by block_num to form text blocks |
-| 0.5h | PDF support | Add PyMuPDF path: `get_text("dict")` for digital PDFs with block/line/span layout |
-| 1.0h | Text chunking | `chunk_text()` — sentence-aware splitting, 500 chars, 50 char overlap |
-| 0.5h | UI: preprocessing pipeline | Show 3×2 grid of preprocessing step images per page in upload results |
-| 0.5h | Test + compare | Upload invoice JPGs, expand preprocessing view, verify quality improvement |
-
-**✅ Day 2 Deliverable:** Upload image → see preprocessing pipeline visually → improved OCR text + layout blocks.
-
----
-
-### 📅 Day 3 — Embeddings + Vector Database Storage
-
-**Goal:** All text chunks stored as searchable vectors in ChromaDB.
-
-| Time | Task | Details |
-|------|------|---------|
-| 0.5h | Test sentence-transformers | Load `all-MiniLM-L6-v2`, verify 384-dim embeddings generate correctly |
-| 1.0h | Embedding service | `embedding_service.py` — lazy model loading, batch + single embedding generation |
-| 1.0h | ChromaDB vector store | `vector_store.py` — PersistentClient, add/query/delete, cosine distance |
-| 1.0h | Wire into upload | After chunking → generate embeddings → store with metadata (doc_id, filename, page, method, date) |
-| 0.5h | Stats endpoint | `GET /api/documents/stats` — total chunks + total documents |
-| 0.5h | List + delete endpoints | `GET /api/documents/` and `DELETE /api/documents/{id}` |
-| 1.0h | Test persistence | Upload 10+ invoice images, restart server, verify data survives |
-| 0.5h | UI: document list | Show uploaded docs with chunk counts on UploadPage |
-
-**✅ Day 3 Deliverable:** Invoices auto-embedded and stored — data persists across restarts.
-
----
-
-### 📅 Day 4 — Search Engine (Semantic + Keyword + Hybrid)
-
-**Goal:** 3 working search modes with ranked results in the UI.
-
-| Time | Task | Details |
-|------|------|---------|
-| 1.5h | Semantic search | Embed query → `collection.query()` → cosine similarity → top-k results |
-| 1.0h | Keyword search (BM25) | Load all docs → tokenize → `BM25Okapi` → score + rank |
-| 1.0h | Hybrid search | Weighted merge (70% semantic + 30% keyword), deduplicate by chunk prefix, sort |
-| 0.5h | Search router | `POST /api/search/` — accept query + search_type + top_k |
-| 1.0h | Search UI | SearchPage with search bar, type dropdown (semantic/keyword/hybrid), result cards |
-| 0.5h | Enrich results | Run NER on returned snippets, show extraction_method badge (digital/ocr) per result |
-| 0.5h | Test all 3 modes | Search "Garrett Gonzales" (keyword), "wine purchase invoice" (semantic), compare |
-
-**✅ Day 4 Deliverable:** Type a query → get ranked results with scores, entities, and source info.
-
----
-
-### 📅 Day 5 — NER + RAG Chatbot with Ollama
-
-**Goal:** Entity extraction on upload + conversational Q&A grounded in documents.
-
-| Time | Task | Details |
-|------|------|---------|
-| 0.5h | spaCy NER setup | `python -m spacy download en_core_web_sm`, test on invoice text |
-| 1.0h | NER service | `ner_service.py` — extract PERSON, ORG, DATE, GPE, MONEY + deduplicate + group by type |
-| 0.5h | Wire into upload | Run NER on first 10K chars of extracted text, return grouped entities |
-| 0.5h | Wire into search | Run NER on each search result snippet, display entity tags on result cards |
-| 0.5h | UI: entity display | Expandable entity list with colored labels in upload results |
-| 0.5h | Ollama setup | `ollama pull mistral`, verify `curl localhost:11434/api/tags` |
-| 1.5h | RAG chatbot service | `chat_service.py` — semantic search top-5 → context assembly → Ollama → answer + source citations |
-| 0.5h | Chat router | `POST /api/chat/` |
-| 1.0h | Chat UI | Chat mode toggle on SearchPage — message bubbles, source file + page references |
-
-**✅ Day 5 Deliverable:** Entities extracted from invoices + ask "What did Garrett Gonzales sell?" → grounded answer.
-
----
-
-### 📅 Day 6 — Polish + Presentation + Demo Rehearsal
-
-**Goal:** Stable demo, clean slides, confident delivery.
-
-| Time | Task | Details |
-|------|------|---------|
-| 1.0h | Bug fixes | Handle: corrupt images, large files, empty OCR, special chars, timeout errors |
-| 0.5h | Error handling UI | Loading spinners, error toasts, empty state messages |
-| 0.5h | Pre-load demo data | Upload all invoice images, verify ChromaDB populated, test searches |
-| 1.0h | Write demo script | Exact steps: (1) upload invoice JPGs, (2) show preprocessing pipeline + text + entities, (3) run 3 search types, (4) chatbot Q&A |
-| 2.0h | Build presentation | Architecture diagram, tech justification with tradeoff analysis, pipeline flow with screenshots, limitations slide |
-| 1.0h | Demo rehearsal | Run through 2-3 times end-to-end, time each section, prepare backup screenshots |
-| 0.5h | Prepare Q&A answers | Why ChromaDB? Why Tesseract? OCR vs cloud APIs? How to scale? What are failure cases? |
-
-**✅ Day 6 Deliverable:** Polished demo + slides ready + answers to expected questions.
-
----
-
-## 📊 Effort Summary
-
-| Day | Focus | Hours | Deliverable |
-|-----|-------|-------|-------------|
-| 1 | Setup + Document Ingestion | ~6h | Upload image → see OCR text |
-| 2 | Image Enhancement + Layout | ~6h | Preprocessing pipeline visible in UI |
-| 3 | Embeddings + Vector DB | ~6h | Chunks stored in ChromaDB |
-| 4 | Search Engine | ~6h | 3 search modes with NER + method badges |
-| 5 | NER + RAG Chatbot | ~6h | Entities + Ollama-powered Q&A |
-| 6 | Polish + Presentation | ~6h | Stable demo + slides |
-| **Total** | | **~36h** | **Complete working prototype** |
-
----
-
-## 🎯 Demo Script (10-15 minutes)
-
-### Step 1: Document Upload (3 min)
-1. Open the app at `http://localhost:5173`
-2. Drag-drop 3-5 invoice `.jpg` files into the upload area
-3. **Show:** Processing status → "[IMAGE] Processed 1 page → N chunks embedded"
-4. **Expand:** "View extracted text preview" → show OCR-extracted invoice content
-5. **Expand:** "Named entities" → show PERSON, ORG, DATE, GPE, MONEY extracted
-6. **Expand:** "Extraction details per page" → show method badge ("OCR"), block count
-7. **Expand:** "View image preprocessing pipeline" → **show 6-step grid**: original → grayscale → denoised → contrast enhanced → deskewed → binarized
-
-### Step 2: Search (3 min)
-8. Navigate to **Search** tab
-9. **Semantic search:** "wine purchase" → results ranked by meaning similarity
-10. **Keyword search:** "Garrett Gonzales" → results with exact name match
-11. **Hybrid search:** "invoice from Connecticut" → combines both approaches
-12. **Point out:** Score values, extraction method badge, entity tags on results
-
-### Step 3: Chatbot (3 min)
-13. Toggle **Chat Mode ON**
-14. Ask: "What items were purchased in the Garrett Gonzales invoice?"
-15. **Show:** Grounded answer with source citations (filename, page, score)
-16. Ask: "Which invoices have the highest total amount?"
-17. **Show:** Answer references specific documents
-
-### Step 4: Architecture (2 min)
-18. Show architecture slide with pipeline flow
-19. Explain technology choices with tradeoff reasoning
-20. Discuss limitations honestly
-
----
-
-## ⚠️ Known Limitations (Discuss in Presentation)
-
-| # | Limitation | Impact | Possible Improvement |
-|---|-----------|--------|---------------------|
-| 1 | **Tesseract OCR accuracy** | Struggles with complex table layouts, handwriting, very low-res scans | Use EasyOCR or PaddleOCR; combine multiple engines |
-| 2 | **Fixed-size chunking** | May split mid-sentence or mid-table row | Use semantic chunking based on paragraph/section boundaries |
-| 3 | **Embedding model size** | `all-MiniLM-L6-v2` (384-dim) trades quality for speed | Upgrade to `all-mpnet-base-v2` (768-dim) for better retrieval |
-| 4 | **Single-node ChromaDB** | Not suitable for millions of documents | Migrate to Qdrant, Milvus, or Weaviate for distributed search |
-| 5 | **RAG hallucination** | Local LLMs may fabricate information despite grounding | Add confidence scoring, enforce stricter prompts, use larger models |
-| 6 | **No authentication** | Prototype has no access control | Add JWT auth or integrate with OAuth provider |
-| 7 | **English only** | OCR and NER configured for English | Add `lang` parameter for Tesseract, use multilingual spaCy/NER model |
-| 8 | **Image-only = 1 page** | Each `.jpg` is treated as 1 page; no multi-page image support | Support multi-page TIFF or batch upload grouping |
 
 ---
 
@@ -430,9 +280,11 @@ brew install ollama
 
 | RAM Available | Model | Command | Size |
 |---------------|-------|---------|------|
-| 4GB | Phi-3 Mini 3.8B | `ollama pull phi3:mini` | ~2.3GB |
-| 8GB+ | Mistral 7B ⭐ | `ollama pull mistral` | ~4.1GB |
+| 4GB | TinyLlama 1.1B ⭐ | `ollama pull tinyllama` | ~637MB |
+| 8GB+ | Mistral 7B | `ollama pull mistral` | ~4.1GB |
 | 16GB+ | Llama 3 8B | `ollama pull llama3` | ~4.7GB |
+
+The default model is **TinyLlama** (CPU-only, `num_gpu: 0`), which runs on any machine without a GPU.
 
 ### Verify Setup
 
@@ -445,7 +297,7 @@ curl http://localhost:11434/api/tags    # Should return model list
 
 # Test a completion:
 curl http://localhost:11434/api/chat -d '{
-  "model": "mistral",
+  "model": "tinyllama",
   "messages": [{"role": "user", "content": "Hello!"}],
   "stream": false
 }'
@@ -456,8 +308,9 @@ curl http://localhost:11434/api/chat -d '{
 Edit `backend/.env` to change the model:
 
 ```env
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=mistral
+OLLAMA_BASE_URL=http://host.docker.internal:11434   # Docker
+# OLLAMA_BASE_URL=http://localhost:11434             # Local (without Docker)
+OLLAMA_MODEL=tinyllama
 ```
 
 ---
@@ -480,7 +333,7 @@ Each image passes through 5 OpenCV transformations before OCR:
 2. The question is embedded using `all-MiniLM-L6-v2` → 384-dim vector
 3. ChromaDB finds the top-5 most similar document chunks (cosine similarity)
 4. Those chunks are assembled into a context prompt with source labels
-5. Ollama (Mistral 7B) generates an answer constrained to only cite the provided context
+5. Ollama (TinyLlama) generates an answer constrained to only cite the provided context
 6. The answer is returned with source references (filename + page + similarity score)
 
 ### Why hybrid search instead of just semantic?

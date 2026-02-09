@@ -19,7 +19,7 @@ def check_ollama_available() -> bool:
         return False
 
 
-def chat_with_documents(question: str, top_k: int = 5) -> dict:
+def chat_with_documents(question: str, top_k: int = 20) -> dict:
     """
     Answer a question using retrieved document context (RAG).
     Pipeline: semantic search → build context → Ollama LLM → return answer + sources.
@@ -30,7 +30,7 @@ def chat_with_documents(question: str, top_k: int = 5) -> dict:
             "answer": (
                 "⚠️ Ollama is not running. Start it with:\n\n"
                 "  1. `ollama serve`  (in a separate terminal)\n"
-                "  2. `ollama pull mistral`  (download model if not already)\n\n"
+                "  2. `ollama pull tinyllama`  (download model if not already)\n\n"
                 "Ollama is free and runs 100% locally."
             ),
             "sources": [],
@@ -79,6 +79,7 @@ Answer based on the documents above:"""
                 "options": {
                     "temperature": 0.3,
                     "num_predict": 1000,
+                    "num_gpu": 0,
                 },
             },
             timeout=120,
@@ -90,7 +91,7 @@ Answer based on the documents above:"""
     except requests.RequestException as e:
         answer = f"⚠️ Error communicating with Ollama: {str(e)}"
     except (KeyError, ValueError):
-        answer = "⚠️ Unexpected response from Ollama. Make sure the model is downloaded: `ollama pull mistral`"
+        answer = "⚠️ Unexpected response from Ollama. Make sure the model is downloaded: `ollama pull tinyllama`"
 
     return {
         "answer": answer,
