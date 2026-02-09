@@ -21,10 +21,10 @@ def _enrich_with_entities(results: list[dict]) -> list[dict]:
     return results
 
 
-def semantic_search(query: str, top_k: int = 10) -> list[dict]:
+def semantic_search(query: str, top_k: int = 10, document_id: str = None) -> list[dict]:
     """Perform semantic search using vector similarity."""
     query_embedding = generate_single_embedding(query)
-    results = search_similar(query_embedding, top_k=top_k)
+    results = search_similar(query_embedding, top_k=top_k, document_id=document_id)
 
     search_results = []
     if results and results["documents"] and results["documents"][0]:

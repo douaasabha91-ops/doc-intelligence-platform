@@ -19,10 +19,15 @@ def check_ollama_available() -> bool:
         return False
 
 
-def chat_with_documents(question: str, top_k: int = 20) -> dict:
+def chat_with_documents(question: str, top_k: int = 20, document_id: str = None) -> dict:
     """
     Answer a question using retrieved document context (RAG).
     Pipeline: semantic search → build context → Ollama LLM → return answer + sources.
+    
+    Args:
+        question: User's question
+        top_k: Number of chunks to retrieve
+        document_id: Optional - filter to specific document only
     """
     # Check Ollama is running
     if not check_ollama_available():
@@ -36,8 +41,8 @@ def chat_with_documents(question: str, top_k: int = 20) -> dict:
             "sources": [],
         }
 
-    # 1. Retrieve relevant chunks
-    search_results = semantic_search(question, top_k=top_k)
+    # 1. Retrieve relevant chunks (optionally filtered by document)
+    search_results = semantic_search(question, top_k=top_k, document_id=document_id)
 
     if not search_results:
         return {

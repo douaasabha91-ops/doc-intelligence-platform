@@ -83,7 +83,8 @@ class Entity(BaseModel):
 
 class ChatRequest(BaseModel):
     question: str
-    top_k: int = 5
+    top_k: int = 20  # Also changed from 5 to 20 to match your frontend
+    document_id: Optional[str] = None  # ADD THIS LINE
 
 
 class ChatResponse(BaseModel):

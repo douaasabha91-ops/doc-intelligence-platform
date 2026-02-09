@@ -46,12 +46,34 @@ export const searchDocuments = async (query, searchType = 'semantic', topK = 10)
 
 // ── Chat Endpoint ──
 
-export const askQuestion = async (question, topK = 20) => {
-  const response = await api.post('/chat/', {
+export const askQuestion = async (question, topK = 20, documentId = null) => {
+  console.log('=== API.JS: askQuestion called ===')
+  console.log('Question:', question)
+  console.log('TopK:', topK)
+  console.log('DocumentId:', documentId)
+  
+  const payload = {
     question,
     top_k: topK,
-  })
-  return response.data
+  }
+  
+  // Add document_id filter if provided
+  if (documentId) {
+    payload.document_id = documentId
+    console.log('Document ID added to payload')
+  }
+  
+  console.log('Final payload:', payload)
+  console.log('About to POST to /chat/')
+  
+  try {
+    const response = await api.post('/chat/', payload)
+    console.log('Response received:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('ERROR in askQuestion:', error)
+    throw error
+  }
 }
 
 export default api

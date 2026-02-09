@@ -1,6 +1,11 @@
 """
 Vector store service using ChromaDB.
 Handles storage and retrieval of document embeddings.
+
+FIXED VERSION with:
+1. Debug logging to track filtering
+2. Proper ChromaDB $eq operator for filtering
+3. Metadata validation
 """
 
 import chromadb
@@ -43,6 +48,12 @@ def add_document_chunks(
 
     ids = [f"{doc_id}_chunk_{i}" for i in range(len(chunks))]
 
+    # IMPORTANT: Ensure document_id is in ALL metadata entries
+    for meta in metadatas:
+        if "document_id" not in meta:
+            print(f"⚠️  WARNING: Adding missing document_id to metadata")
+            meta["document_id"] = doc_id
+
     collection.add(
         ids=ids,
         documents=chunks,
@@ -50,21 +61,65 @@ def add_document_chunks(
         metadatas=metadatas,
     )
 
+    print(f"✅ Added {len(ids)} chunks for document {doc_id}")
     return len(ids)
 
 
 def search_similar(
     query_embedding: list[float],
     top_k: int = 10,
+    document_id: str = None,
 ) -> dict:
     """Search for similar document chunks by embedding."""
     collection = get_collection()
 
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=top_k,
-        include=["documents", "metadatas", "distances"],
-    )
+    # ============ DEBUG LOGGING START ============
+    print("\n" + "="*80)
+    print("🔍 SEARCH_SIMILAR DEBUG")
+    print("="*80)
+    print(f"📌 Requested top_k: {top_k}")
+    print(f"📌 Filter document_id: {document_id}")
+    # ============ DEBUG LOGGING END ============
+
+    query_params = {
+        "query_embeddings": [query_embedding],
+        "n_results": top_k,
+        "include": ["documents", "metadatas", "distances"],
+    }
+    
+    # Add document filter if specified
+    if document_id:
+        # ============ DEBUG LOGGING START ============
+        print(f"🔧 Adding where filter for document_id: {document_id}")
+        # ============ DEBUG LOGGING END ============
+        
+        # Use ChromaDB's $eq operator for exact string matching
+        query_params["where"] = {"document_id": {"$eq": document_id}}
+        
+        # ============ DEBUG LOGGING START ============
+        print(f"🔧 Where clause: {query_params['where']}")
+        # ============ DEBUG LOGGING END ============
+
+    # ============ DEBUG LOGGING START ============
+    print(f"📤 Executing ChromaDB query...")
+    # ============ DEBUG LOGGING END ============
+    
+    results = collection.query(**query_params)
+    
+    # ============ DEBUG LOGGING START ============
+    if results and results.get("documents") and results["documents"][0]:
+        print(f"✅ Retrieved {len(results['documents'][0])} results")
+        print("\n📋 Document IDs in results:")
+        for i, meta in enumerate(results["metadatas"][0][:5]):  # Show first 5
+            doc_id = meta.get("document_id", "NO_ID")
+            filename = meta.get("filename", "NO_FILENAME")
+            print(f"   {i+1}. doc_id={doc_id}, file={filename}")
+        if len(results["metadatas"][0]) > 5:
+            print(f"   ... and {len(results['metadatas'][0]) - 5} more")
+    else:
+        print("❌ No results returned from ChromaDB")
+    print("="*80 + "\n")
+    # ============ DEBUG LOGGING END ============
 
     return results
 
@@ -100,8 +155,9 @@ def delete_document(doc_id: str):
     collection = get_collection()
     # Get all IDs that belong to this document
     results = collection.get(
-        where={"document_id": doc_id},
+        where={"document_id": {"$eq": doc_id}},  # Use $eq here too
         include=[],
     )
     if results["ids"]:
         collection.delete(ids=results["ids"])
+        print(f"✅ Deleted {len(results['ids'])} chunks for document {doc_id}")
