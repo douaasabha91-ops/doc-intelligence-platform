@@ -46,7 +46,7 @@ export const searchDocuments = async (query, searchType = 'semantic', topK = 10)
 
 // ── Chat Endpoint ──
 
-export const askQuestion = async (question, topK = 5) => {
+export const askQuestion = async (question, topK = 20) => {
   const response = await api.post('/chat/', {
     question,
     top_k: topK,

@@ -19,7 +19,7 @@ def check_ollama_available() -> bool:
         return False
 
 
-def chat_with_documents(question: str, top_k: int = 5) -> dict:
+def chat_with_documents(question: str, top_k: int = 20) -> dict:
     """
     Answer a question using retrieved document context (RAG).
     Pipeline: semantic search → build context → Ollama LLM → return answer + sources.

@@ -145,6 +145,32 @@ ollama pull mistral                          # ~4.1GB download
 cd backend
 python -m venv venv
 venv\Scripts\activate          # macOS: source venv/bin/activate
+
+Backend (Docker)
+Create .env file
+cd backend
+cp .env.example .env
+cd ..
+
+Build & start backend (FIRST TIME)
+docker compose up --build
+
+Backend API:
+👉 http://localhost:8000/docs
+
+
+4️⃣ Frontend (React)
+
+Open a new terminal:
+cd frontend
+npm install
+npm run dev
+
+
+Frontend UI:
+👉 http://localhost:5173
+
+old :
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 cp .env.example .env
